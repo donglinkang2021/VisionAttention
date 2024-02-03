@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 from typing import List, Tuple, Optional
+from einops import rearrange
 
 class BaseModel(nn.Module):
     def __init__(self):
@@ -112,9 +113,9 @@ class CNN(BaseModel):
         return x
     
 class ResHeads(BaseModel):
-    def __init__(self, n_classes: int, pretrained_model: str='resnet18'):
+    def __init__(self, n_classes: int, n_head: int = None, pretrained_model: str='resnet18'):
         super().__init__()
-        # self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        self.n_head = n_head
         if pretrained_model == 'resnet18':
             self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
         elif pretrained_model == 'resnet34':
@@ -155,5 +156,11 @@ class ResHeads(BaseModel):
 
         x = self.backbone.avgpool(x)
         x = torch.flatten(x, 1)
+
+        if self.n_head is not None:
+            x = rearrange(x, 'B (nh hs) -> B nh hs', nh=self.n_head)
+            x = F.scaled_dot_product_attention(x, x, x)
+            x = rearrange(x, 'B nh hs -> B (nh hs)')
+
         x = self.classifier(x)
         return x
