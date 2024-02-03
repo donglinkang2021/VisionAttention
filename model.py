@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 from typing import List, Tuple, Optional
 
 class BaseModel(nn.Module):
@@ -79,7 +80,7 @@ class BasicBlock(nn.Module):
         return out
 
 class CNN(BaseModel):
-    def __init__(self, in_channels: int, n_channels: List[int], n_classes: int):
+    def __init__(self, in_channels: int, n_channels: int, n_classes: int):
         super().__init__()
         self.downsample = nn.Sequential(
             nn.Conv2d(
@@ -108,4 +109,51 @@ class CNN(BaseModel):
         x = self.avgpool(x)     # B, 256, 4, 4  -> B, 256, 1, 1
         x = self.flatten(x)     # B, 256, 1, 1  -> B, 256
         x = self.fc(x)          # B, 256        -> B, 10
+        return x
+    
+class ResHeads(BaseModel):
+    def __init__(self, n_classes: int, pretrained_model: str='resnet18'):
+        super().__init__()
+        # self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        if pretrained_model == 'resnet18':
+            self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        elif pretrained_model == 'resnet34':
+            self.backbone = models.resnet34(weights=models.ResNet34_Weights.DEFAULT)
+        elif pretrained_model == 'resnet50':
+            self.backbone = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+        elif pretrained_model == 'resnet101':
+            self.backbone = models.resnet101(weights=models.ResNet101_Weights.DEFAULT)
+        elif pretrained_model == 'resnet152':
+            self.backbone = models.resnet152(weights=models.ResNet152_Weights.DEFAULT)
+        else:
+            raise ValueError(f"Unknown model: {pretrained_model}")
+        
+        self.classifier = nn.Linear(512, n_classes)
+        nn.init.normal_(self.classifier.weight, mean=0.0, std=0.02)
+        print(f"number of parameters: {self.get_num_params()/1e6:.6f} M ")
+
+    def freeze(self):
+        for x in self.parameters():
+            x.requires_grad = False
+        for x in self.classifier.parameters():
+            x.requires_grad = True
+
+    def unfreeze(self):
+        for x in self.parameters():
+            x.requires_grad = True
+
+    def forward(self, x):
+        x = self.backbone.conv1(x)
+        x = self.backbone.bn1(x)
+        x = self.backbone.relu(x)
+        x = self.backbone.maxpool(x)
+
+        x = self.backbone.layer1(x)
+        x = self.backbone.layer2(x)
+        x = self.backbone.layer3(x)
+        x = self.backbone.layer4(x)
+
+        x = self.backbone.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
         return x
