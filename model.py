@@ -21,6 +21,8 @@ class BaseModel(nn.Module):
             nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, x):
         raise NotImplementedError
@@ -118,10 +120,12 @@ class ResHeads(BaseModel):
         self.n_head = n_head
         if pretrained_model == 'resnet18':
             self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+            self.classifier = nn.Linear(512, n_classes)
         elif pretrained_model == 'resnet34':
             self.backbone = models.resnet34(weights=models.ResNet34_Weights.DEFAULT)
         elif pretrained_model == 'resnet50':
             self.backbone = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+            self.classifier = nn.Linear(2048, n_classes)
         elif pretrained_model == 'resnet101':
             self.backbone = models.resnet101(weights=models.ResNet101_Weights.DEFAULT)
         elif pretrained_model == 'resnet152':
@@ -129,7 +133,7 @@ class ResHeads(BaseModel):
         else:
             raise ValueError(f"Unknown model: {pretrained_model}")
         
-        self.classifier = nn.Linear(512, n_classes)
+        
         nn.init.normal_(self.classifier.weight, mean=0.0, std=0.02)
         print(f"number of parameters: {self.get_num_params()/1e6:.6f} M ")
 
@@ -163,4 +167,133 @@ class ResHeads(BaseModel):
             x = rearrange(x, 'B nh hs -> B (nh hs)')
 
         x = self.classifier(x)
+        return x
+
+class MLP(nn.Module):
+    def __init__(self, n_embd, dropout, bias=True):
+        super().__init__()
+        self.c_fc    = nn.Linear(n_embd, 4 * n_embd, bias=bias)
+        self.gelu    = nn.GELU()
+        self.c_proj  = nn.Linear(4 * n_embd, n_embd, bias=bias)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        x = self.c_fc(x)
+        x = self.gelu(x)
+        x = self.c_proj(x)
+        x = self.dropout(x)
+        return x
+
+class CausalSelfAttention(nn.Module):
+    """mix the head and the multi-head attention together"""
+
+    def __init__(self, n_embd: int, n_head: int, dropout: float, is_causal=False):
+        super().__init__()
+        assert n_embd % n_head == 0
+        self.n_embd = n_embd
+        self.n_head = n_head
+        self.dropout = dropout
+        self.is_causal = is_causal
+        # key, query, value projections for all heads, but in a batch
+        self.c_attn = nn.Linear(n_embd, 3 * n_embd, bias=False)
+        # output projection
+        self.c_proj = nn.Linear(n_embd, n_embd)
+        # regularization
+        self.resid_dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        B, T, C = x.shape
+        # project the queries, keys and values
+        q, k, v = self.c_attn(x).split(C, dim=2)
+        k = rearrange(k, 'B T (nh hs) -> B nh T hs', nh=self.n_head)
+        q = rearrange(q, 'B T (nh hs) -> B nh T hs', nh=self.n_head)
+        v = rearrange(v, 'B T (nh hs) -> B nh T hs', nh=self.n_head)
+
+        # casual self-attention: ignore "future" keys during attention
+        # masked attention
+        # Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
+        # efficient attention using Flash Attention CUDA kernels
+        y = torch.nn.functional.scaled_dot_product_attention(
+            q, k, v, attn_mask=None, 
+            dropout_p=self.dropout if self.training else 0,
+            is_causal=self.is_causal
+        )
+        
+        # re-assemble all head outputs side by side
+        y = rearrange(y, 'B nh T hs -> B T (nh hs)')
+        # output projection
+        y = self.resid_dropout(self.c_proj(y))
+        return y
+
+class Block(nn.Module):
+    """ Transformer block: communication followed by computation """
+
+    def __init__(self, n_embd: int, n_head: int, dropout: float):
+        # n_embd: embedding dimension, n_head: the number of heads we'd like
+        super().__init__()
+        assert n_embd % n_head == 0, 'n_embd must be divisible by n_head'
+        self.attn = CausalSelfAttention(n_embd, n_head, dropout)
+        self.mlp = MLP(n_embd, dropout)
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
+
+    def forward(self, x):
+        x = x + self.attn(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
+        return x
+    
+class ViHeads(BaseModel):
+    """ViHeads is not ViT"""
+    def __init__(
+            self, 
+            in_channels: int, 
+            n_classes: int,
+            image_size: int, 
+            patch_size: int, 
+            n_embd: int, 
+            n_head: int, 
+            n_layer: int,
+            dropout: float 
+        ):
+        super().__init__()
+        assert image_size % patch_size == 0, 'image size must be divisible by patch size'
+        self.block_size = (image_size // patch_size) ** 2                  # number of patches H*W
+        self.patch_flatten_dim = in_channels * patch_size ** 2             # number of elements in a patch p1*p2*C
+        self.patch_size = patch_size                                       # patch size p1=p2=p
+        self.n_embd = n_embd                                               # embedding dimension
+        self.n_head = n_head                                               # number of heads
+        
+        self.transformer = nn.ModuleDict(dict(
+            pte = nn.Linear(self.patch_flatten_dim, n_embd, bias=False),   # patch to embedding
+            ppe = nn.Embedding(self.block_size, n_embd),                   # position embedding  
+            drop = nn.Dropout(dropout),
+            h = nn.ModuleList([Block(n_embd, n_head, dropout) for _ in range(n_layer)]),
+            ln_f = nn.LayerNorm(n_embd)
+        ))
+
+        self.fc = nn.Linear(self.block_size * self.n_embd, n_classes)
+        
+        self.apply(self._init_weights)
+        print(f"number of parameters: {self.get_num_params()/1e6:.6f} M ")
+
+    def forward(self, x):
+        device = x.device
+        x = rearrange(x, 'B C (H p1) (W p2) -> B (H W) (p1 p2 C)', p1=self.patch_size, p2=self.patch_size)
+        
+        pos = torch.arange(0, self.block_size, dtype=torch.long, device=device) # shape (t)
+
+        tok_emb = self.transformer.pte(x)   # token embeddings of shape (B, T, n_embd)
+        pos_emb = self.transformer.ppe(pos) # position embeddings of shape (T, n_embd)
+        x = self.transformer.drop(tok_emb + pos_emb)
+        for block in self.transformer.h:
+            x = block(x)
+        x = self.transformer.ln_f(x)
+
+        # x = rearrange(x, 'B T (nh hs) -> B T nh hs', nh=self.n_head)
+        # x = F.scaled_dot_product_attention(x, x, x)
+        # x = rearrange(x, 'B T nh hs -> B (T nh hs)')
+
+        x = rearrange(x, 'B T D -> B (T D)')
+        x = self.fc(x)  # B (T nh hs) -> B n_classes
+        
         return x

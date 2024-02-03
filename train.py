@@ -9,7 +9,7 @@ from model import CNN
 import numpy as np
 
 # config
-is_pretrained = True
+is_pretrained = False
 in_channels = 3
 n_channels = 64
 n_classes = 10

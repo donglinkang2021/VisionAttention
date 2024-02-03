@@ -5,22 +5,34 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10
 from torch.utils.data import DataLoader
-from model import ResHeads
+from model import ViHeads
 import numpy as np
 
 # config
-pretrained_backbone = 'resnet50'
+## model config
 is_pretrained = False
+in_channels = 3
+image_size = 32
+patch_size = 4
+n_embd = 32
+n_head = 8
+n_layer = 6
+dropout = 0.1
 n_classes = 10
-n_head = 128
+
+## train config
 batch_size = 128
 learning_rate = 1e-3
 num_epochs = 20
 eval_interval = 10
 save_begin = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-classifier_name = 'linear' if n_head is None else f'heads{n_head}'
-model_name = f'{pretrained_backbone}_{classifier_name}'
+
+## save config
+backbone_name = f'transformer_{n_layer}x{n_head}x{n_embd}'
+# classifier_name = f'heads{n_head}'
+classifier_name = f'linear'
+model_name = f'{backbone_name}_{classifier_name}'
 # ---------------------
 
 torch.manual_seed(2024)
@@ -32,8 +44,17 @@ test_dataset = CIFAR10(root='./data', train=False, transform=transform)
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
-model = ResHeads(n_classes, n_head, pretrained_backbone)
-# model.freeze()
+model = ViHeads(
+    in_channels, 
+    n_classes,
+    image_size, 
+    patch_size, 
+    n_embd, 
+    n_head, 
+    n_layer,
+    dropout 
+)
+
 model.to(device)
 if is_pretrained:
     model.load_state_dict(torch.load(f'checkpoint/best_{model_name}.pth'))
