@@ -9,16 +9,22 @@ from model import CNN
 import numpy as np
 
 # config
+## model config
 is_pretrained = False
 in_channels = 3
 n_channels = 64
 n_classes = 10
-batch_size = 128
+
+## train config
+batch_size = 512
 learning_rate = 1e-3
-num_epochs = 20
+num_epochs = 10
 eval_interval = 10
-save_begin = 800
+save_begin = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+## save config
+model_name = 'CNN'
 # ---------------------
 
 torch.manual_seed(2024)
@@ -38,7 +44,7 @@ test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=Fa
 model = CNN(in_channels, n_channels, n_classes)
 model.to(device)
 if is_pretrained:
-    model.load_state_dict(torch.load('checkpoint/best_CNN.pth'))
+    model.load_state_dict(torch.load(f'checkpoint/best_{model_name}.pth'))
 
 criterion = nn.CrossEntropyLoss()
 
@@ -60,7 +66,7 @@ def estimate():
             losses.append(loss.item())
             num_samples += x.shape[0]
             num_correct += (y_pred.argmax(1) == y).sum().item()
-        metrics[name] = np.mean(losses)
+        metrics[name + '_loss'] = np.mean(losses)
         metrics[name + '_acc'] = num_correct / num_samples
     model.train()
     return metrics
@@ -81,7 +87,7 @@ for epoch in range(num_epochs):
 
             if iter > save_begin and metrics['test_acc'] > best_acc:
                 best_acc = metrics['test_acc']
-                torch.save(model.state_dict(), 'checkpoint/best_CNN.pth')
+                torch.save(model.state_dict(), f'checkpoint/best_{model_name}.pth')
 
         x, y = x.to(device), y.to(device)
         y_pred = model(x)

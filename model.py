@@ -99,9 +99,10 @@ class CNN(BaseModel):
         )
         self.res1 = BasicBlock(n_channels, 2 * n_channels, stride=2)
         self.res2 = BasicBlock(2 * n_channels, 4 * n_channels, stride=2)
+        self.res3 = BasicBlock(4 * n_channels, 8 * n_channels, stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(4 * n_channels, n_classes)
+        self.fc = nn.Linear(8 * n_channels, n_classes)
         self.apply(self._init_weights)
         print(f"number of parameters: {self.get_num_params()/1e6:.6f} M ")
 
@@ -109,9 +110,10 @@ class CNN(BaseModel):
         x = self.downsample(x)  # B, 3, 32, 32  -> B, 64, 16, 16
         x = self.res1(x)        # B, 64, 16, 16 -> B, 128, 8, 8
         x = self.res2(x)        # B, 128, 8, 8  -> B, 256, 4, 4
-        x = self.avgpool(x)     # B, 256, 4, 4  -> B, 256, 1, 1
-        x = self.flatten(x)     # B, 256, 1, 1  -> B, 256
-        x = self.fc(x)          # B, 256        -> B, 10
+        x = self.res3(x)        # B, 256, 4, 4  -> B, 512, 2, 2
+        x = self.avgpool(x)     # B, 512, 2, 2  -> B, 512, 1, 1
+        x = self.flatten(x)     # B, 512, 1, 1  -> B, 512
+        x = self.fc(x)          # B, 512        -> B, n_classes
         return x
     
 class ResHeads(BaseModel):

@@ -9,16 +9,21 @@ from model import ResHeads
 import numpy as np
 
 # config
-pretrained_backbone = 'resnet50'
+## model config
 is_pretrained = False
 n_classes = 10
-n_head = 128
-batch_size = 128
+n_head = None
+
+# train config
+batch_size = 512
 learning_rate = 1e-3
-num_epochs = 20
+num_epochs = 10
 eval_interval = 10
 save_begin = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# save config
+pretrained_backbone = 'resnet18'
 classifier_name = 'linear' if n_head is None else f'heads{n_head}'
 model_name = f'{pretrained_backbone}_{classifier_name}'
 # ---------------------

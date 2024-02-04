@@ -14,16 +14,16 @@ is_pretrained = False
 in_channels = 3
 image_size = 32
 patch_size = 4
-n_embd = 32
+n_embd = 128
 n_head = 8
 n_layer = 6
 dropout = 0.1
 n_classes = 10
 
 ## train config
-batch_size = 128
+batch_size = 512
 learning_rate = 1e-3
-num_epochs = 20
+num_epochs = 10
 eval_interval = 10
 save_begin = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
