@@ -125,13 +125,16 @@ class ResHeads(BaseModel):
             self.classifier = nn.Linear(512, n_classes)
         elif pretrained_model == 'resnet34':
             self.backbone = models.resnet34(weights=models.ResNet34_Weights.DEFAULT)
+            self.classifier = nn.Linear(512, n_classes)
         elif pretrained_model == 'resnet50':
             self.backbone = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
             self.classifier = nn.Linear(2048, n_classes)
         elif pretrained_model == 'resnet101':
             self.backbone = models.resnet101(weights=models.ResNet101_Weights.DEFAULT)
+            self.classifier = nn.Linear(2048, n_classes)
         elif pretrained_model == 'resnet152':
             self.backbone = models.resnet152(weights=models.ResNet152_Weights.DEFAULT)
+            self.classifier = nn.Linear(2048, n_classes)
         else:
             raise ValueError(f"Unknown model: {pretrained_model}")
         
