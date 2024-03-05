@@ -1,5 +1,5 @@
-data/
-__pycache__/
-.hypothesis/
-checkpoint/
-result/
+data
+__pycache__
+.hypothesis
+checkpoints
+tmp

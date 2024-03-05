@@ -1,12 +1,11 @@
 # 训练模型
 import torch
-import torch.optim as optim
 import torch.nn as nn
-import torchvision.transforms as transforms
-from torchvision.datasets import MNIST, CIFAR10
-from torch.utils.data import DataLoader
 from model import CNN
+from datasets import get_loader
 import numpy as np
+from utils import save_ckpt
+from tqdm import tqdm
 
 # config
 ## model config
@@ -19,75 +18,63 @@ n_classes = 10
 batch_size = 512
 learning_rate = 1e-3
 num_epochs = 10
-eval_interval = 10
+eval_interval = 20
 save_begin = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 ## save config
 model_name = 'CNN'
+model_ckpts = save_ckpt(model_name)
+print(f"the model checkpoints will be saved at {model_ckpts}.")
 # ---------------------
 
 torch.manual_seed(2024)
 np.random.seed(2024)
 
-# transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
-# train_dataset = MNIST(root='./data', train=True, transform=transform)
-# test_dataset = MNIST(root='./data', train=False, transform=transform)
-
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-train_dataset = CIFAR10(root='./data', train=True, transform=transform)
-test_dataset = CIFAR10(root='./data', train=False, transform=transform)
-train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
-
-
 model = CNN(in_channels, n_channels, n_classes)
 model.to(device)
 if is_pretrained:
-    model.load_state_dict(torch.load(f'checkpoint/best_{model_name}.pth'))
+    pretrained_path = f'checkpoint/best_{model_name}.pth'
+    model.load_state_dict(torch.load(pretrained_path))
 
 criterion = nn.CrossEntropyLoss()
-
-optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
-
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+train_loader, test_loader = get_loader('cifar10', batch_size)
 
 @torch.no_grad()
 def estimate():
     metrics = {}
     model.eval()
-    for name, loader in [('train', train_loader), ('test', test_loader)]:
+    for split, loader in [('test', test_loader)]:
         losses = []
         num_samples = 0
         num_correct = 0
-        for x, y in loader:
+        for x, y in tqdm(loader, ncols=100, desc=f"Eval {split} processing", leave=False):
             x, y = x.to(device), y.to(device)
             y_pred = model(x)
             loss = criterion(y_pred, y)
             losses.append(loss.item())
             num_samples += x.shape[0]
             num_correct += (y_pred.argmax(1) == y).sum().item()
-        metrics[name + '_loss'] = np.mean(losses)
-        metrics[name + '_acc'] = num_correct / num_samples
+        metrics[split + '_loss'] = np.mean(losses)
+        metrics[split + '_acc'] = num_correct / num_samples
     model.train()
     return metrics
 
-# 训练
 best_acc = 0
 n_batches = len(train_loader)
+pbar = tqdm(total=num_epochs * n_batches, desc="Processing batches", leave=True, unit="batch")
 for epoch in range(num_epochs):
     for i, (x, y) in enumerate(train_loader):
 
         iter = epoch * n_batches + i
         if iter % eval_interval == 0 or iter == num_epochs * n_batches - 1:
             metrics = estimate()
-            print(f"step {iter}:", end=' ')
-            for k, v in metrics.items():
-                print(f"{k}: {v:.4f}", end=' ')
-            print()
+            print(f"\n---step {iter} {metrics}---")
 
             if iter > save_begin and metrics['test_acc'] > best_acc:
                 best_acc = metrics['test_acc']
-                torch.save(model.state_dict(), f'checkpoint/best_{model_name}.pth')
+                torch.save(model.state_dict(), f'{model_ckpts}/best_{model_name}.pth')
 
         x, y = x.to(device), y.to(device)
         y_pred = model(x)
@@ -96,8 +83,11 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
+        pbar.set_description(f"loss: {loss.item()}")
+        pbar.update(1)
+pbar.close()
+
 """output:
-(GPT) root@test:~/VisionAttention# python train.py
-number of parameters: 1.161354 M 
-step 0: train: 0.1859 train_acc: 0.9391 test: 0.8274 test_acc: 0.7548 
+---step 979 {'test_loss': 1.362803328037262, 'test_acc': 0.7113}---                                 
+loss: 0.14283181726932526: 100%|████████████████████████████████████████████████████████| 980/980 [02:32<00:00,  6.42batch/s]
 """

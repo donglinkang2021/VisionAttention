@@ -1,8 +1,10 @@
 # README
 
-Attention Again❗❗❗This repository focus on using attention mechanism to some simple computer vision task.
+| MNIST | CIFAR10 |
+| :---: | :---: |
+| ![MNIST](./images/mnist.png) | ![CIFAR10](./images/cifar10.png) |
 
-- Run on CPU
+Attention Again❗❗❗This repository focus on using attention mechanism to some simple computer vision task.
 
 ```bash
 pip install -r requirements.txt
