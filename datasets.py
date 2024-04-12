@@ -8,8 +8,8 @@ def get_loader(datasets: str, batch_size: int):
             transforms.ToTensor(), 
             transforms.Normalize((0.5,), (0.5,))
         ])
-        train_dataset = MNIST(root='./data', train=True, transform=transform)
-        test_dataset = MNIST(root='./data', train=False, transform=transform)
+        train_dataset = MNIST(root='./data', train=True, transform=transform, download=True)
+        test_dataset = MNIST(root='./data', train=False, transform=transform, download=True)
     elif datasets == 'cifar10':
         transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -21,8 +21,8 @@ def get_loader(datasets: str, batch_size: int):
             transforms.ToTensor(), 
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        train_dataset = CIFAR10(root='./data', train=True, transform=transform_train)
-        test_dataset = CIFAR10(root='./data', train=False, transform=transform_test)
+        train_dataset = CIFAR10(root='./data', train=True, transform=transform_train, download=True)
+        test_dataset = CIFAR10(root='./data', train=False, transform=transform_test, download=True)
     else:
         raise ValueError(f"datasets should be 'mnist' or 'cifar10', but got {datasets}.")
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)

@@ -16,7 +16,7 @@ save_begin = 500
 
 ## save config
 # model_name = 'CNN'
-pretrained_backbone = 'resnet152'
+pretrained_backbone = 'resnet18'
 classifier_name = 'linear' if n_head is None else f'heads{n_head}'
 model_name = f'{pretrained_backbone}_{classifier_name}'
 model_ckpts = save_ckpt(model_name)

@@ -24,11 +24,10 @@ class ResNet(nn.Module):
         if is_freeze:
             self._freeze_feature()
             
-        features_dim = self.backbone.fc.in_features
+        features_dim = backbone.fc.in_features
         self.classifier = nn.Linear(features_dim, n_classes)
         
         nn.init.normal_(self.classifier.weight, mean=0.0, std=0.02)
-        print(f"number of parameters: {self.get_num_params()/1e6:.6f} M ")
 
     def _freeze_feature(self):
         for param in self.feature_extractor.parameters():
