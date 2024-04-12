@@ -1,7 +1,7 @@
 # 训练模型
 import torch
 import torch.nn as nn
-from models import ResNet, get_num_params, save_ckpt
+from models import ResNet, get_num_params
 from datasets import get_loader
 import numpy as np
 import config
@@ -14,6 +14,7 @@ torch.manual_seed(2024)
 np.random.seed(2024)
 
 model = ResNet(config.n_classes, config.pretrained_backbone)
+print(f"number of parameters: {get_num_params(model)/1e6:.6f} M ")
 model.to(device)
 if config.is_pretrained:
     pretrained_path = f'checkpoint/best_{config.model_name}.pth'

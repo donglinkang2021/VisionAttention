@@ -1,6 +1,5 @@
+from models import save_ckpt
 
-from utils import save_ckpt
-# config
 ## model config
 is_pretrained = False
 in_channels = 3
