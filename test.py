@@ -18,9 +18,8 @@ print(f"number of parameters: {get_num_params(model)/1e6:.6f} M ")
 model.to(device)
 criterion = nn.CrossEntropyLoss()
 
-if config.is_pretrained:
-    pretrained_path = f'checkpoints/resnet18_linear/2024-04-12_16-03-53/best_resnet18_linear.pth'
-    model.load_state_dict(torch.load(pretrained_path))
+pretrained_path = f'checkpoints/resnet18_linear/2024-04-12_16-03-53/best_resnet18_linear.pth'
+model.load_state_dict(torch.load(pretrained_path))
 
 
 _, test_loader = get_loader('cifar10', config.batch_size)

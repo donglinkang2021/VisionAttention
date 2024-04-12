@@ -13,7 +13,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 torch.manual_seed(2024)
 np.random.seed(2024)
 
-model = ResNet(config.n_classes, config.pretrained_backbone)
+model = ResNet(config.n_classes, config.pretrained_backbone, config.is_freeze)
 print(f"number of parameters: {get_num_params(model)/1e6:.6f} M ")
 model_ckpts = save_ckpt(config.model_name)
 print(f"the model checkpoints will be saved at {model_ckpts}.")

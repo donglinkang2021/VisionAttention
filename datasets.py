@@ -12,8 +12,8 @@ def get_loader(datasets: str, batch_size: int):
         test_dataset = MNIST(root='./data', train=False, transform=transform, download=True)
     elif datasets == 'cifar10':
         transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
             transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
             transforms.ToTensor(), 
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
