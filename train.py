@@ -1,7 +1,7 @@
 # 训练模型
 import torch
 import torch.nn as nn
-from models import ResNet, get_num_params
+from models import ResNet, get_num_params, save_ckpt
 from datasets import get_loader
 import numpy as np
 import config
@@ -15,10 +15,9 @@ np.random.seed(2024)
 
 model = ResNet(config.n_classes, config.pretrained_backbone)
 print(f"number of parameters: {get_num_params(model)/1e6:.6f} M ")
+model_ckpts = save_ckpt(config.model_name)
+print(f"the model checkpoints will be saved at {model_ckpts}.")
 model.to(device)
-if config.is_pretrained:
-    pretrained_path = f'checkpoint/best_{config.model_name}.pth'
-    model.load_state_dict(torch.load(pretrained_path))
 
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
@@ -58,7 +57,7 @@ for epoch in range(config.num_epochs):
 
             if iter > config.save_begin and metrics['test_acc'] > best_acc:
                 best_acc = metrics['test_acc']
-                torch.save(model.state_dict(), f'{config.model_ckpts}/best_{config.model_name}.pth')
+                torch.save(model.state_dict(), f'{model_ckpts}/best_{config.model_name}.pth')
 
         x, y = x.to(device), y.to(device)
         y_pred = model(x)
