@@ -7,7 +7,7 @@ n_head = None
 is_freeze = False
 
 ## train config
-batch_size = 512
+batch_size = 128
 learning_rate = 1e-3
 num_epochs = 10
 eval_interval = 100

@@ -13,13 +13,18 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 torch.manual_seed(2024)
 np.random.seed(2024)
 
-model = ResNet(config.n_classes, config.pretrained_backbone)
+import torchvision.models as models
+model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+model = model.to(device)
+n_classes = 10
+in_features = model.fc.in_features
+model.fc = nn.Linear(in_features, n_classes).to(device)
 print(f"number of parameters: {get_num_params(model)/1e6:.6f} M ")
 model.to(device)
 criterion = nn.CrossEntropyLoss()
 
-pretrained_path = f'checkpoints/resnet18_linear/2024-04-12_16-03-53/best_resnet18_linear.pth'
-model.load_state_dict(torch.load(pretrained_path))
+pretrained_path = f'dev/best_model.pth'
+model.load_state_dict(torch.load(pretrained_path, map_location=torch.device('cpu')))
 
 
 _, test_loader = get_loader('cifar10', config.batch_size)
