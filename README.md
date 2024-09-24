@@ -1,9 +1,5 @@
 # README
 
-| MNIST | CIFAR10 |
-| :---: | :---: |
-| ![MNIST](./images/mnist.png) | ![CIFAR10](./images/cifar10.png) |
-
 Attention Again❗❗❗This repository focus on using attention mechanism to some simple computer vision task.
 
 ```bash
