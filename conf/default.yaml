@@ -1,0 +1,9 @@
+defaults:
+  - env: default
+  - module: image_classification
+  - dataset: cifar10
+  - hardware: 1xgpu
+  - train: default
+  - optimizer: adam
+  - scheduler: onecyclelr
+  - wandb: default

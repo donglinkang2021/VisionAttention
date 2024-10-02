@@ -1,0 +1,3 @@
+backbone: resnet18
+learning_rate: 3e-4
+compile: true
