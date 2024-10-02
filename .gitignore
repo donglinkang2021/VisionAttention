@@ -1,7 +1,6 @@
 __pycache__
 .hypothesis
 .cache
-wandb
 outputs
 multirun
 ImageClassification

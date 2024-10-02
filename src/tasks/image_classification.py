@@ -15,7 +15,7 @@ class ImageClassificationModule(LightningModule):
         compile: bool,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters(logger=False)
+        self.save_hyperparameters(ignore=['model'], logger=False)
         self.model = model
         self.criterion = torch.nn.CrossEntropyLoss()
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes)

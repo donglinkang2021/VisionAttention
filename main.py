@@ -1,9 +1,10 @@
 import os
 import torch
 import lightning as L
-from lightning.pytorch.loggers import WandbLogger, TensorBoardLogger
+from lightning.pytorch.loggers import WandbLogger
 import hydra
 import wandb
+from omegaconf import DictConfig
 from src.configs.config import Config
 from src.tasks.image_classification import ImageClassificationModule
 from src.datasets import get_datamodule
@@ -36,6 +37,8 @@ def my_app(cfg: Config) -> None:
     model = get_model(cfg.module.backbone, cfg.dataset.num_classes)
     optim_partial = hydra.utils.instantiate(cfg.optimizer, lr=cfg.module.learning_rate)
     scheduler_partial = hydra.utils.instantiate(cfg.scheduler)
+    if isinstance(scheduler_partial, DictConfig):
+        scheduler_partial = None
     
     lm = ImageClassificationModule(
         num_classes = cfg.dataset.num_classes,

@@ -1,0 +1,3 @@
+project: ImageClassification-Demo
+log_model: false
+offline: false
