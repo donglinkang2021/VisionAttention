@@ -3,4 +3,5 @@ __pycache__
 .cache
 outputs
 multirun
-ImageClassification
+ImageClassification-Demo
+/wandb

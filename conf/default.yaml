@@ -5,5 +5,5 @@ defaults:
   - hardware: 1xgpu
   - train: default
   - optimizer: adam
-  - scheduler: onecyclelr
+  - scheduler: default
   - wandb: default
